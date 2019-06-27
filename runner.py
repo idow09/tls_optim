@@ -71,10 +71,10 @@ guiShape="passenger"/>
 # The program looks like this
 #    <tlLogic id="0" type="static" programID="0" offset="0">
 # the locations of the tls are      NESW
-#        <phase duration="31" state="GrGr"/>
-#        <phase duration="6"  state="yryr"/>
-#        <phase duration="31" state="rGrG"/>
-#        <phase duration="6"  state="ryry"/>
+#        <phase duration="31" state="GrGr"/> NS has green
+#        <phase duration="6"  state="yryr"/> yellow
+#        <phase duration="31" state="rGrG"/> EW has green
+#        <phase duration="6"  state="ryry"/> yellow
 #    </tlLogic>
 
 

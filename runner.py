@@ -39,32 +39,27 @@ def generate_routefile():
     random.seed(42)  # make tests reproducible
     N = 3600  # number of time steps
     # demand per second from different directions
-    pWE = 1. / 10
-    pEW = 1. / 11
-    pNS = 1. / 30
-    with open("data/cross.rou.xml", "w") as routes:
+    ps = [1. / 20, 1. / 20, 1. / 20, 1. / 20, 1. / 20, 1. / 20]
+    with open("data/route.rou.xml", "w") as routes:
         print("""<routes>
-        <vType id="typeWE" accel="0.8" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="16.67" \
+        <vType id="default_type" accel="0.8" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="16.67" \
 guiShape="passenger"/>
-        <vType id="typeNS" accel="0.8" decel="4.5" sigma="0.5" length="7" minGap="3" maxSpeed="25" guiShape="bus"/>
 
-        <route id="right" edges="51o 1i 2o 52i" />
-        <route id="left" edges="52o 2i 1o 51i" />
-        <route id="down" edges="54o 4i 3o 53i" />""", file=routes)
+        <route id="route0" edges="0to1 1to2 2to3 3to4" />
+        <route id="route1" edges="1-to1 1to1+" />
+        <route id="route2" edges="1+to1 1to1-" />
+        <route id="route3" edges="0to1 1to2 2to3 3to3-" />
+        <route id="route4" edges="0to1 1to2 2to2+" />
+        <route id="route5" edges="0to1 1to1+" />
+        """, file=routes)
+        routesN = 6
         vehNr = 0
         for i in range(N):
-            if random.uniform(0, 1) < pWE:
-                print('    <vehicle id="right_%i" type="typeWE" route="right" depart="%i" />' % (
-                    vehNr, i), file=routes)
-                vehNr += 1
-            if random.uniform(0, 1) < pEW:
-                print('    <vehicle id="left_%i" type="typeWE" route="left" depart="%i" />' % (
-                    vehNr, i), file=routes)
-                vehNr += 1
-            if random.uniform(0, 1) < pNS:
-                print('    <vehicle id="down_%i" type="typeNS" route="down" depart="%i" color="1,0,0"/>' % (
-                    vehNr, i), file=routes)
-                vehNr += 1
+            for r_i in range(routesN):
+                if random.uniform(0, 1) < ps[r_i]:
+                    print('    <vehicle id="route%i_%i" type="default_type" route="route%i" depart="%i" />' % (
+                        r_i, vehNr, r_i, i), file=routes)
+                    vehNr += 1
         print("</routes>", file=routes)
 
 
@@ -80,23 +75,23 @@ guiShape="passenger"/>
 
 def run():
     """execute the TraCI control loop"""
-    traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000, [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED])
+    traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000, [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED, tc.VAR_WAITING_TIME])
     stepLength = traci.simulation.getDeltaT()
 
     step = 0
     # we start with phase 2 where EW has green
-    traci.trafficlight.setPhase("0", 2)
+    #traci.trafficlight.setPhase("0", 2)
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         calc_stats(stepLength)
-        if traci.trafficlight.getPhase("0") == 2:
+        #if traci.trafficlight.getPhase("0") == 2:
             # we are not already switching
-            if traci.inductionloop.getLastStepVehicleNumber("0") > 0:
+            #if traci.inductionloop.getLastStepVehicleNumber("0") > 0:
                 # there is a vehicle from the north, switch
-                traci.trafficlight.setPhase("0", 3)
-            else:
+                #traci.trafficlight.setPhase("0", 3)
+            #else:
                 # otherwise try to keep green for EW
-                traci.trafficlight.setPhase("0", 2)
+                #traci.trafficlight.setPhase("0", 2)
         step += 1
     traci.close()
     sys.stdout.flush()
@@ -114,14 +109,16 @@ def calc_stats(stepLength):
     scResults = traci.junction.getContextSubscriptionResults("0")
     halting = 0
     timeLoss = 0
+    avgWaitTime = 0
     if scResults:
         relSpeeds = [d[tc.VAR_SPEED] / d[tc.VAR_ALLOWED_SPEED] for d in scResults.values()]
         # compute values corresponding to summary-output
         running = len(relSpeeds)
         halting = len([1 for d in scResults.values() if d[tc.VAR_SPEED] < 0.1])
+        avgWaitTime = sum([d[tc.VAR_WAITING_TIME] for d in scResults.values()]) / running
         meanSpeedRelative = sum(relSpeeds) / running
         timeLoss = (1 - meanSpeedRelative) * running * stepLength
-    print(traci.simulation.getTime(), timeLoss, halting)
+    print(traci.simulation.getTime(), timeLoss, avgWaitTime, halting)
 
 
 # this is the main entry point of this script
@@ -140,7 +137,7 @@ if __name__ == "__main__":
 
     # this is the normal way of using traci. sumo is started as a
     # subprocess and then the python script connects and runs
-    traci.start([sumoBinary, "-c", "data/cross.sumocfg",
+    traci.start([sumoBinary, "-c", "data/config.sumocfg",
                  "--tripinfo-output", "tripinfo.xml"])
     run()
     print('FINISHED')

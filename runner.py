@@ -20,7 +20,7 @@ import traci.constants as tc
 
 def generate_routefile():
     random.seed(42)  # make tests reproducible
-    N = 3600  # number of time steps
+    N = 600  # number of time steps
     # demand per second from different directions
     routesN = 13
     ps = [1. / 20] * routesN
@@ -63,10 +63,27 @@ guiShape="passenger"/>
 #    </tlLogic>
 
 
-def calc_stats(veh_stats):
+def verbose(time_in_sec, intgr=True):
+    if intgr:
+        return "%d sec (= %d min)" % (time_in_sec, time_in_sec / 60)
+    else:
+        return "%.2f sec (= %.2f min)" % (time_in_sec, time_in_sec / 60)
+
+
+def print_stats(veh_stats, total_time_loss):
     avg_trip_time = sum(d['trip_time'] for d in veh_stats.values()) / float(len(veh_stats))
+    min_trip_time = min(d['trip_time'] for d in veh_stats.values())
+    max_trip_time = max(d['trip_time'] for d in veh_stats.values())
     avg_wait_time = sum(d['wait_time'] for d in veh_stats.values()) / float(len(veh_stats))
-    return avg_trip_time, avg_wait_time
+    min_wait_time = min(d['wait_time'] for d in veh_stats.values())
+    max_wait_time = max(d['wait_time'] for d in veh_stats.values())
+    print("avg_trip_time = ", verbose(avg_trip_time, False))
+    print("min_trip_time = ", verbose(min_trip_time))
+    print("max_trip_time = ", verbose(max_trip_time))
+    print("avg_wait_time = ", verbose(avg_wait_time, False))
+    print("min_wait_time = ", verbose(min_wait_time))
+    print("max_wait_time = ", verbose(max_wait_time))
+    print("total_time_loss = ", verbose(total_time_loss))
 
 
 def run():
@@ -77,12 +94,12 @@ def run():
 
     step = 0
     veh_stats = {}
+    total_time_loss = 0
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
-        calc_step_stats(step_length, veh_stats)
+        total_time_loss += calc_step_stats(step_length, veh_stats)
         step += 1
-    avg = calc_stats(veh_stats)
-    print('AVG = ', avg)
+    print_stats(veh_stats, total_time_loss)
     traci.close()
     sys.stdout.flush()
 
@@ -115,7 +132,7 @@ def calc_step_stats(step_length, veh_stats):
             if d[tc.VAR_SPEED] < 0.1:
                 veh_stats[k]['wait_time'] += 1
     print(traci.simulation.getTime(), time_loss, avg_wait_time, halting)
-    # return veh_stats ?
+    return time_loss
 
 
 # this is the main entry point of this script

@@ -39,7 +39,8 @@ def generate_routefile():
     random.seed(42)  # make tests reproducible
     N = 3600  # number of time steps
     # demand per second from different directions
-    ps = [1. / 20, 1. / 20, 1. / 20, 1. / 20, 1. / 20, 1. / 20]
+    routesN = 13
+    ps = [1. / 20] * routesN
     with open("data/route.rou.xml", "w") as routes:
         print("""<routes>
         <vType id="default_type" accel="0.8" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="16.67" \
@@ -51,8 +52,14 @@ guiShape="passenger"/>
         <route id="route3" edges="0to1 1to2 2to3 3to3-" />
         <route id="route4" edges="0to1 1to2 2to2+" />
         <route id="route5" edges="0to1 1to1+" />
+        <route id="route6" edges="2+to2 2to1 1to0" />
+        <route id="route7" edges="2+to2 2to3 3to4" />
+        <route id="route8" edges="3-to3 3to2 2to1 1to0" />
+        <route id="route9" edges="3-to3 3to4" />
+        <route id="route10" edges="4to3 3to2 2to2+" />
+        <route id="route11" edges="4to3 3to2 2to1 1to1+" />
+        <route id="route12" edges="4to3 3to2 2to1 1to0" />
         """, file=routes)
-        routesN = 6
         vehNr = 0
         for i in range(N):
             for r_i in range(routesN):

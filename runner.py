@@ -20,7 +20,7 @@ import traci.constants as tc
 
 def generate_routefile():
     random.seed(42)  # make tests reproducible
-    N = 600  # number of time steps
+    N = 3600  # number of time steps
     # demand per second from different directions
     routesN = 13
     ps = [1. / 20] * routesN
@@ -65,9 +65,9 @@ guiShape="passenger"/>
 
 def verbose(time_in_sec, intgr=True):
     if intgr:
-        return "%d sec (= %d min)" % (time_in_sec, time_in_sec / 60)
+        return "%d sec (= %.2f min)" % (time_in_sec, float(time_in_sec) / 60)
     else:
-        return "%.2f sec (= %.2f min)" % (time_in_sec, time_in_sec / 60)
+        return "%.2f sec (= %.2f min)" % (time_in_sec, float(time_in_sec) / 60)
 
 
 def print_stats(veh_stats, total_time_loss):

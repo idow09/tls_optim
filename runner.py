@@ -63,6 +63,12 @@ guiShape="passenger"/>
 #    </tlLogic>
 
 
+def calc_stats(veh_stats):
+    avg_trip_time = sum(d['trip_time'] for d in veh_stats.values()) / float(len(veh_stats))
+    avg_wait_time = sum(d['wait_time'] for d in veh_stats.values()) / float(len(veh_stats))
+    return avg_trip_time, avg_wait_time
+
+
 def run():
     """execute the TraCI control loop"""
     traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000,
@@ -73,8 +79,10 @@ def run():
     veh_stats = {}
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
-        calc_stats(step_length, veh_stats)
+        calc_step_stats(step_length, veh_stats)
         step += 1
+    avg = calc_stats(veh_stats)
+    print('AVG = ', avg)
     traci.close()
     sys.stdout.flush()
 
@@ -87,7 +95,7 @@ def get_options():
     return options
 
 
-def calc_stats(step_length, veh_stats):
+def calc_step_stats(step_length, veh_stats):
     sc_results = traci.junction.getContextSubscriptionResults("0")
     halting = 0
     time_loss = 0

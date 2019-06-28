@@ -70,9 +70,10 @@ def run():
     step_length = traci.simulation.getDeltaT()
 
     step = 0
+    veh_stats = {}
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
-        calc_stats(step_length)
+        calc_stats(step_length, veh_stats)
         step += 1
     traci.close()
     sys.stdout.flush()
@@ -81,12 +82,12 @@ def run():
 def get_options():
     opt_parser = optparse.OptionParser()
     opt_parser.add_option("--nogui", action="store_true",
-                         default=False, help="run the commandline version of sumo")
+                          default=False, help="run the commandline version of sumo")
     options, args = opt_parser.parse_args()
     return options
 
 
-def calc_stats(step_length):
+def calc_stats(step_length, veh_stats):
     sc_results = traci.junction.getContextSubscriptionResults("0")
     halting = 0
     time_loss = 0
@@ -99,7 +100,14 @@ def calc_stats(step_length):
         avg_wait_time = sum([d[tc.VAR_WAITING_TIME] for d in sc_results.values()]) / running
         mean_speed_relative = sum(rel_speeds) / running
         time_loss = (1 - mean_speed_relative) * running * step_length
+
+        for k, d in sc_results.items():
+            veh_stats.setdefault(k, {'trip_time': 0, 'wait_time': 0})
+            veh_stats[k]['trip_time'] += 1
+            if d[tc.VAR_SPEED] < 0.1:
+                veh_stats[k]['wait_time'] += 1
     print(traci.simulation.getTime(), time_loss, avg_wait_time, halting)
+    # return veh_stats ?
 
 
 # this is the main entry point of this script

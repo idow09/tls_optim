@@ -17,16 +17,23 @@ from sumolib import checkBinary  # noqa
 import traci  # noqa
 import traci.constants as tc
 
+routesN = 13
+ps = [1. / 20] * routesN
+tl1_flows = [ps[2], ps[6]+ps[12]+ps[11]+ps[8], ps[1], ps[0]+ps[3]+ps[4]+ps[5]]
+tl2_flows = [ps[10]+ps[11]+ps[12]+ps[8], ps[0]+ps[3]+ps[4], ps[6]+ps[7]]
+tl3_flows = [ps[10]+ps[11]+ps[12], ps[8]+ps[9], ps[3]+ps[0]+ps[7]]
+
 
 def generate_routefile():
     random.seed(42)  # make tests reproducible
     N = 3600  # number of time steps
     # demand per second from different directions
-    routesN = 13
-    ps = [1. / 20] * routesN
+    # routesN = 13
+    # ps = [1. / 20] * routesN
     with open("data/route.rou.xml", "w") as routes:
         print("""<routes>
-        <vType id="default_type" accel="0.8" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="16.67" \
+        <vType id="default_type" accel="0.8" decel="4.5" sigma="0.5" 
+        length="5" minGap="2.5" maxSpeed="16.67" \
 guiShape="passenger"/>
 
         <route id="route0" edges="0to1 1to2 2to3 3to4" />
@@ -47,8 +54,10 @@ guiShape="passenger"/>
         for i in range(N):
             for r_i in range(routesN):
                 if random.uniform(0, 1) < ps[r_i]:
-                    print('    <vehicle id="route%i_%i" type="default_type" route="route%i" depart="%i" />' % (
-                        r_i, vehNr, r_i, i), file=routes)
+                    print(
+                        '    <vehicle id="route%i_%i" type="default_type" '
+                        'route="route%i" depart="%i" />' % (
+                            r_i, vehNr, r_i, i), file=routes)
                     vehNr += 1
         print("</routes>", file=routes)
 
@@ -89,7 +98,8 @@ def print_stats(veh_stats, total_time_loss):
 def run():
     """execute the TraCI control loop"""
     traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000,
-                                    [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED, tc.VAR_WAITING_TIME])
+                                    [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED,
+                                     tc.VAR_WAITING_TIME])
     step_length = traci.simulation.getDeltaT()
 
     step = 0
@@ -98,6 +108,7 @@ def run():
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         total_time_loss += calc_step_stats(step_length, veh_stats)
+        traci.setPhase("1")
         step += 1
     print_stats(veh_stats, total_time_loss)
     traci.close()
@@ -107,7 +118,8 @@ def run():
 def get_options():
     opt_parser = optparse.OptionParser()
     opt_parser.add_option("--nogui", action="store_true",
-                          default=False, help="run the commandline version of sumo")
+                          default=False,
+                          help="run the commandline version of sumo")
     options, args = opt_parser.parse_args()
     return options
 
@@ -118,11 +130,13 @@ def calc_step_stats(step_length, veh_stats):
     time_loss = 0
     avg_wait_time = 0
     if sc_results:
-        rel_speeds = [d[tc.VAR_SPEED] / d[tc.VAR_ALLOWED_SPEED] for d in sc_results.values()]
+        rel_speeds = [d[tc.VAR_SPEED] / d[tc.VAR_ALLOWED_SPEED] for d in
+                      sc_results.values()]
         # compute values corresponding to summary-output
         running = len(rel_speeds)
         halting = len([1 for d in sc_results.values() if d[tc.VAR_SPEED] < 0.1])
-        avg_wait_time = sum([d[tc.VAR_WAITING_TIME] for d in sc_results.values()]) / running
+        avg_wait_time = sum(
+            [d[tc.VAR_WAITING_TIME] for d in sc_results.values()]) / running
         mean_speed_relative = sum(rel_speeds) / running
         time_loss = (1 - mean_speed_relative) * running * step_length
 

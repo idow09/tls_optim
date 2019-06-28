@@ -17,14 +17,22 @@ from sumolib import checkBinary  # noqa
 import traci  # noqa
 import traci.constants as tc
 import numpy as np
+
 routesN = 13
 ps = [1. / 20] * routesN
-tl1_flows = [ps[2], ps[6]+ps[12]+ps[11]+ps[8], ps[1], ps[0]+ps[3]+ps[4]+ps[5]]
-tl1_flows = 90*np.array(tl1_flows)/sum(tl1_flows)
-tl2_flows = [ps[10]+ps[11]+ps[12]+ps[8], ps[0]+ps[3]+ps[4], ps[6]+ps[7]]
-tl2_flows = 90*np.array(tl2_flows)/sum(tl2_flows)
-tl3_flows = [ps[10]+ps[11]+ps[12], ps[8]+ps[9], ps[3]+ps[0]+ps[7]]
-tl3_flows = 90*np.array(tl3_flows)/sum(tl3_flows)
+tl1_flows = [ps[2], ps[6] + ps[12] + ps[11] + ps[8], ps[1], ps[0] + ps[3] + ps[4] + ps[5]]
+tl1_flows = 90 * np.array(tl1_flows) / sum(tl1_flows)
+tl2_flows = [ps[10] + ps[11] + ps[12] + ps[8], ps[0] + ps[3] + ps[4], ps[6] + ps[7]]
+tl2_flows = 90 * np.array(tl2_flows) / sum(tl2_flows)
+tl3_flows = [ps[10] + ps[11] + ps[12], ps[8] + ps[9], ps[3] + ps[0] + ps[7]]
+tl3_flows = 90 * np.array(tl3_flows) / sum(tl3_flows)
+
+tl2phase2weight = {
+    "1": [],
+    "2": [],
+    "3": []
+}
+
 
 def generate_routefile():
     random.seed(42)  # make tests reproducible
@@ -97,6 +105,19 @@ def print_stats(veh_stats, total_time_loss):
     print("total_time_loss = ", verbose(total_time_loss))
 
 
+def calc_phase(step_in_cycle, phase2weight):
+    ylw_time = 6
+    net_cycle_time = 90 - ylw_time * len(phase2weight)
+    phase2weight = np.array(phase2weight) / sum(phase2weight)
+    phase2weight_cum = np.cumsum(phase2weight)
+    for phase, weight in enumerate(phase2weight):
+        upper = (phase2weight_cum[phase]) * net_cycle_time + ylw_time * phase
+        lower = (upper - weight) * net_cycle_time + ylw_time * phase
+        if lower < step_in_cycle < upper:
+            return phase
+    raise RuntimeError('WTF!!!!!!!!!!!!!!!')
+
+
 def run():
     """execute the TraCI control loop"""
     traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000,
@@ -107,25 +128,13 @@ def run():
     step = 0
     veh_stats = {}
     total_time_loss = 0
-    tl_counters = {"1": (0, tl1_flows[0], False, 5),
-                   "2": (0, tl2_flows[0], False, 5),
-                   "3": (0, tl3_flows[0], False, 5)}
-    tls = ["1", "2", "3"]
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
         total_time_loss += calc_step_stats(step_length, veh_stats)
 
+        tls = ["1", "2", "3"]
         for tl in tls:
-            traci.trafficlight.setPhase(tl, tl_counters[tl][0])
-            tl_counters[tl][1] -= 1
-            if tl_counters[tl][1] == 0:
-                tl_counters[tl][2] = True
-                tl_counters[tl][0] = tl_counters[tl][0] + 1
-            if tl_counters[tl][2]:
-                tl_counters[tl][0] -= 5
-        tl_counters[]
-        traci.trafficlight.setPhase("2", 0)
-        traci.trafficlight.setPhase("3", 0)
+            traci.trafficlight.setPhase(tl, calc_phase(step % 90, tl2phase2weight[tl]))
         step += 1
     print_stats(veh_stats, total_time_loss)
     traci.close()

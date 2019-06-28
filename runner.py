@@ -65,50 +65,41 @@ guiShape="passenger"/>
 
 def run():
     """execute the TraCI control loop"""
-    traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000, [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED, tc.VAR_WAITING_TIME])
-    stepLength = traci.simulation.getDeltaT()
+    traci.junction.subscribeContext("0", tc.CMD_GET_VEHICLE_VARIABLE, 1000000,
+                                    [tc.VAR_SPEED, tc.VAR_ALLOWED_SPEED, tc.VAR_WAITING_TIME])
+    step_length = traci.simulation.getDeltaT()
 
     step = 0
-    # we start with phase 2 where EW has green
-    #traci.trafficlight.setPhase("0", 2)
     while traci.simulation.getMinExpectedNumber() > 0:
         traci.simulationStep()
-        calc_stats(stepLength)
-        #if traci.trafficlight.getPhase("0") == 2:
-            # we are not already switching
-            #if traci.inductionloop.getLastStepVehicleNumber("0") > 0:
-                # there is a vehicle from the north, switch
-                #traci.trafficlight.setPhase("0", 3)
-            #else:
-                # otherwise try to keep green for EW
-                #traci.trafficlight.setPhase("0", 2)
+        calc_stats(step_length)
         step += 1
     traci.close()
     sys.stdout.flush()
 
 
 def get_options():
-    optParser = optparse.OptionParser()
-    optParser.add_option("--nogui", action="store_true",
+    opt_parser = optparse.OptionParser()
+    opt_parser.add_option("--nogui", action="store_true",
                          default=False, help="run the commandline version of sumo")
-    options, args = optParser.parse_args()
+    options, args = opt_parser.parse_args()
     return options
 
 
-def calc_stats(stepLength):
-    scResults = traci.junction.getContextSubscriptionResults("0")
+def calc_stats(step_length):
+    sc_results = traci.junction.getContextSubscriptionResults("0")
     halting = 0
-    timeLoss = 0
-    avgWaitTime = 0
-    if scResults:
-        relSpeeds = [d[tc.VAR_SPEED] / d[tc.VAR_ALLOWED_SPEED] for d in scResults.values()]
+    time_loss = 0
+    avg_wait_time = 0
+    if sc_results:
+        rel_speeds = [d[tc.VAR_SPEED] / d[tc.VAR_ALLOWED_SPEED] for d in sc_results.values()]
         # compute values corresponding to summary-output
-        running = len(relSpeeds)
-        halting = len([1 for d in scResults.values() if d[tc.VAR_SPEED] < 0.1])
-        avgWaitTime = sum([d[tc.VAR_WAITING_TIME] for d in scResults.values()]) / running
-        meanSpeedRelative = sum(relSpeeds) / running
-        timeLoss = (1 - meanSpeedRelative) * running * stepLength
-    print(traci.simulation.getTime(), timeLoss, avgWaitTime, halting)
+        running = len(rel_speeds)
+        halting = len([1 for d in sc_results.values() if d[tc.VAR_SPEED] < 0.1])
+        avg_wait_time = sum([d[tc.VAR_WAITING_TIME] for d in sc_results.values()]) / running
+        mean_speed_relative = sum(rel_speeds) / running
+        time_loss = (1 - mean_speed_relative) * running * step_length
+    print(traci.simulation.getTime(), time_loss, avg_wait_time, halting)
 
 
 # this is the main entry point of this script

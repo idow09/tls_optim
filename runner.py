@@ -111,8 +111,8 @@ def calc_phase(step_in_cycle, phase2weight):
     phase2weight = np.array(phase2weight) / sum(phase2weight)
     phase2weight_cum = np.cumsum(phase2weight)
     for phase, weight in enumerate(phase2weight):
-        upper = (phase2weight_cum[phase]) * net_cycle_time + ylw_time * phase
-        lower = (upper - weight) * net_cycle_time + ylw_time * phase
+        upper = int((phase2weight_cum[phase]) * net_cycle_time + ylw_time * phase)
+        lower = int((upper - weight) * net_cycle_time + ylw_time * phase)
         if lower < step_in_cycle < upper:
             return phase
     raise RuntimeError('WTF!!!!!!!!!!!!!!!')
